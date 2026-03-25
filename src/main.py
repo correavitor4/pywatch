@@ -4,6 +4,7 @@ from textual.containers import VerticalScroll
 
 from cronometro import CronometroWidget
 from temporizador import TemporizadorWidget
+from relogio_mundial import RelogioMundialWidget, FusoHorarioWidget
 
 class RelogioWindowsApp(App):
     """Clone do aplicativo de Relógio do Windows 11 em formato TUI."""
@@ -19,10 +20,10 @@ class RelogioWindowsApp(App):
     Label {
         color: $text-muted;
     }
-    #aba_cronometro {
+    #aba_cronometro, #aba_relogio_mundial {
         align: center top;
     }
-    CronometroWidget, TemporizadorWidget {
+    CronometroWidget, TemporizadorWidget, FusoHorarioWidget {
         align: center middle;
         height: auto;
         min-height: 10;
@@ -80,7 +81,43 @@ class RelogioWindowsApp(App):
         text-align: center;
         color: $text-muted;
     }
-    #container_cronometros, #container_temporizadores {
+    RelogioMundialWidget {
+        align: center middle;
+        width: auto;
+        height: auto;
+        margin-bottom: 2; /* Espaço entre o relógio principal e os outros cartões */
+    }
+    #hora_atual {
+        color: $primary;
+    }
+    #data_atual {
+        text-align: center;
+        color: $text-muted;
+        margin-top: 1;
+    }
+    .fuso_header {
+        width: 100%;
+        height: auto;
+        align: center middle;
+    }
+    .select_fuso {
+        width: 1fr;
+    }
+    .remover_fuso {
+        min-width: 5;
+        margin-left: 1;
+    }
+    .fuso_hora {
+        text-align: center;
+        text-style: bold;
+        color: $accent;
+        margin-top: 1;
+    }
+    .fuso_data {
+        text-align: center;
+        color: $text-muted;
+    }
+    #container_cronometros, #container_temporizadores, #container_fusos {
         width: 100%;
         height: 1fr;
         layout: grid;
@@ -88,7 +125,7 @@ class RelogioWindowsApp(App):
         grid-rows: auto; /* Permite que as linhas usem sua altura real, ativando o scroll */
         grid-gutter: 1 2; /* Adiciona espaçamento vertical e horizontal entre os cartões */
     }
-    #btn_add_cronometro, #btn_add_temporizador {
+    #btn_add_cronometro, #btn_add_temporizador, #btn_add_fuso {
         margin: 1;
     }
     Button {
@@ -110,7 +147,10 @@ class RelogioWindowsApp(App):
         # Estrutura das 4 abas principais
         with TabbedContent(initial="aba_relogio_mundial"):
             with TabPane("Relógio Mundial", id="aba_relogio_mundial"):
-                yield Label("A interface com fusos horários ficará aqui.")
+                yield RelogioMundialWidget()
+                yield Button("+ Adicionar Fuso Horário", id="btn_add_fuso", variant="primary")
+                with VerticalScroll(id="container_fusos"):
+                    pass
                 
             with TabPane("Alarmes", id="aba_alarmes"):
                 yield Label("Lista de alarmes configuráveis ficará aqui.")
@@ -136,6 +176,10 @@ class RelogioWindowsApp(App):
         elif event.button.id == "btn_add_temporizador":
             container = self.query_one("#container_temporizadores", VerticalScroll)
             container.mount(TemporizadorWidget())
+            container.scroll_end(animate=False)
+        elif event.button.id == "btn_add_fuso":
+            container = self.query_one("#container_fusos", VerticalScroll)
+            container.mount(FusoHorarioWidget())
             container.scroll_end(animate=False)
 
 if __name__ == "__main__":

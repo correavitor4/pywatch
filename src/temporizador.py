@@ -1,3 +1,6 @@
+import platform
+import subprocess
+import threading
 from textual.app import ComposeResult
 from textual.widgets import Label, Button, Input
 from textual.containers import Horizontal, Vertical
@@ -47,6 +50,10 @@ class TemporizadorWidget(Vertical):
             self.query_one(".input_tempo", Input).display = False
             label_display.update("00:00:00 - FIM!")
             label_display.add_class("pausado") # Fica amarelo para chamar a atenção
+            
+            # Captura o nome dado ao temporizador e dispara o alarme sonoro/visual
+            nome = self.query_one(".cronometro_nome", Input).value
+            self.disparar_alarme(nome)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.has_class("iniciar_pausar"):
@@ -59,6 +66,36 @@ class TemporizadorWidget(Vertical):
         elif event.button.has_class("remover"):
             self.pausar()
             self.remove()
+
+    def disparar_alarme(self, nome: str) -> None:
+        """Emite notificação nativa e som incisivo dependendo do Sistema Operacional."""
+        sistema = platform.system()
+        mensagem = f"O temporizador '{nome}' chegou ao fim!" if nome else "O temporizador chegou ao fim!"
+
+        def tarefa_alarme():
+            if sistema == "Windows":
+                try:
+                    import winsound
+                    # Toque incisivo: 3 bipes de alta frequência (1500Hz)
+                    for _ in range(3):
+                        winsound.Beep(1500, 400)
+                except Exception:
+                    pass
+                # Mostra janela pop-up nativa na frente de tudo através do PowerShell
+                cmd = f"Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('{mensagem}', 'Temporizador', 0, 64)"
+                subprocess.run(["powershell", "-Command", cmd], creationflags=0x08000000)
+            
+            elif sistema == "Linux":
+                try:
+                    # Notificação desktop nativa do Linux (urgência crítica)
+                    subprocess.run(["notify-send", "--urgency=critical", "Temporizador (TUI)", mensagem])
+                    # Tenta emitir um som incisivo de alerta padrão do pacote freedesktop
+                    subprocess.run(["paplay", "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"])
+                except Exception:
+                    print("\a", end="\r") # Fallback para o som de beep padrão do terminal
+
+        # A thread impede que o som ou o popup travem o relógio na tela
+        threading.Thread(target=tarefa_alarme, daemon=True).start()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Mágica do microondas: formata o texto da direita para a esquerda ao digitar."""
