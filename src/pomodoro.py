@@ -78,7 +78,15 @@ class PomodoroWidget(Vertical):
             if not self.rodando:
                 self.tempo_restante = self.tempos[self.modo]
 
+    def formatar_inputs(self) -> None:
+        """Aplica o limite visual e o preenchimento de zeros aos inputs."""
+        foco = self.query_one(".input_pomodoro_foco", Input)
+        pausa = self.query_one(".input_pomodoro_pausa", Input)
+        if not foco.has_focus: foco.value = f"{min(int(foco.value or '0'), 60):02}"
+        if not pausa.has_focus: pausa.value = f"{min(int(pausa.value or '0'), 60):02}"
+
     def iniciar(self) -> None:
+        self.formatar_inputs()
         self.atualizar_tempos()
         if self.tempo_restante <= 0:
             self.tempo_restante = self.tempos[self.modo]
@@ -98,6 +106,7 @@ class PomodoroWidget(Vertical):
 
     def zerar(self) -> None:
         self.pausar()
+        self.formatar_inputs()
         self.atualizar_tempos()
         self.tempo_restante = self.tempos[self.modo]
         self.query_one(".iniciar_pausar", Button).label = "Iniciar"
@@ -106,6 +115,7 @@ class PomodoroWidget(Vertical):
         """Muda o modo. Inicia sozinho caso a chave de Auto esteja ligada."""
         self.pausar()
         self.modo = "Pausa" if self.modo == "Foco" else "Foco"
+        self.formatar_inputs()
         self.atualizar_tempos()
         self.tempo_restante = self.tempos[self.modo]
         self.query_one(".pomodoro_modo", Label).update(self.modo.upper())
@@ -116,10 +126,10 @@ class PomodoroWidget(Vertical):
     def atualizar_tempos(self) -> None:
         """Lê os valores digitados e os guarda em segundos."""
         try:
-            f_str = self.query_one(".input_pomodoro_foco", Input).value or "0"
-            p_str = self.query_one(".input_pomodoro_pausa", Input).value or "0"
-            self.tempos["Foco"] = int(f_str) * 60
-            self.tempos["Pausa"] = int(p_str) * 60
+            f_val = min(int(self.query_one(".input_pomodoro_foco", Input).value or "0"), 60)
+            p_val = min(int(self.query_one(".input_pomodoro_pausa", Input).value or "0"), 60)
+            self.tempos["Foco"] = f_val * 60
+            self.tempos["Pausa"] = p_val * 60
         except Exception: pass
 
     def atualizar_tempo(self) -> None:

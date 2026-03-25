@@ -55,12 +55,22 @@ class AlarmeWidget(Vertical):
                 self.limpar_soneca() # Cancela sonecas pendentes se desligar
 
     def checar_alarme(self) -> None:
+        input_widget = self.query_one(".input_alarme", Input)
+        if not input_widget.has_focus:
+            try:
+                h, m = map(int, input_widget.value.split(":"))
+                h_fixed, m_fixed = min(h, 23), min(m, 59)
+                fixed_str = f"{h_fixed:02}:{m_fixed:02}"
+                if input_widget.value != fixed_str:
+                    input_widget.value = fixed_str
+            except Exception: pass
+
         if not self.ativo:
             return
         
         agora_completo = datetime.now().strftime("%Y-%m-%d %H:%M")
         agora = datetime.now().strftime("%H:%M")
-        hora_alarme = self.query_one(".input_alarme", Input).value
+        hora_alarme = input_widget.value
         
         # Toca se for a hora oficial OU a hora da soneca
         if (agora == hora_alarme or agora == self.hora_soneca) and self.ultimo_disparo != agora_completo:
@@ -155,10 +165,7 @@ class AlarmeWidget(Vertical):
         if event.input.has_class("input_alarme"):
             numeros = "".join(filter(str.isdigit, event.value))
             numeros = numeros[-4:].zfill(4)
-            
-            h = min(int(numeros[0:2]), 23)
-            m = min(int(numeros[2:4]), 59)
-            formatado = f"{h:02}:{m:02}"
+            formatado = f"{numeros[0:2]}:{numeros[2:4]}"
             
             if event.value != formatado:
                 event.input.value = formatado
