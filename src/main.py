@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+import platform
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, Button, Input, Switch
 from textual.containers import VerticalScroll
@@ -202,7 +204,7 @@ class RelogioWindowsApp(App):
 
     # Atalhos de teclado que aparecerão no rodapé
     BINDINGS = [
-        ("q", "quit", "Sair"),
+        ("q", "minimize_to_tray", "Ocultar"),
         ("d", "toggle_dark", "Tema"),
         ("1", "switch_tab('aba_relogio_mundial')", "Mundial"),
         ("2", "switch_tab('aba_alarmes')", "Alarmes"),
@@ -212,7 +214,8 @@ class RelogioWindowsApp(App):
         ("left", "previous_tab", "Aba Anterior"),
         ("right", "next_tab", "Próxima Aba"),
         ("n", "add_item", "Novo"),
-        ("r", "remove_item", "Remover Último")
+        ("r", "remove_item", "Remover Último"),
+        ("b", "minimize_to_tray", "Esconder")
     ]
 
     def compose(self) -> ComposeResult:
@@ -253,6 +256,18 @@ class RelogioWindowsApp(App):
     def on_mount(self) -> None:
         """Executa automaticamente assim que o app é montado na tela."""
         self.carregar_dados()
+        
+        # Desabilita o botão X no Windows para evitar fechamento acidental
+        if platform.system() == "Windows":
+            import ctypes
+            hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+            if hwnd:
+                hMenu = ctypes.windll.user32.GetSystemMenu(hwnd, False)
+                if hMenu:
+                    ctypes.windll.user32.DeleteMenu(hMenu, 0xF060, 0)
+                    
+        if "--minimized" in sys.argv:
+            self.action_minimize_to_tray()
 
     def carregar_dados(self) -> None:
         """Lê o JSON e recria os alarmes e fusos salvos na última sessão."""
@@ -298,9 +313,52 @@ class RelogioWindowsApp(App):
             pass # Garante que falhas de salvamento não impeçam o app de fechar
 
     def action_quit(self) -> None:
-        """Intercepta o comando de sair (tecla q ou ctrl+c) para salvar os dados antes."""
+        """Intercepta o ctrl+c para salvar os dados antes de sair totalmente."""
         self.salvar_dados()
         self.exit() # Força o encerramento seguro do Textual
+
+    def action_minimize_to_tray(self) -> None:
+        """Oculta o terminal e cria um ícone na bandeja do sistema (Windows)."""
+        self.salvar_dados()
+        if platform.system() != "Windows":
+            self.notify("A Bandeja do Sistema é suportada nativamente apenas no Windows.")
+            return
+
+        import ctypes
+        import threading
+        try:
+            import pystray
+            from PIL import Image, ImageDraw
+        except ImportError:
+            self.notify("Instale as libs 'pystray' e 'pillow' para usar a bandeja.")
+            return 
+        
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 0) # 0 = SW_HIDE
+            
+        def criar_icone():
+            imagem = Image.new('RGB', (64, 64), color=(30, 30, 30))
+            desenho = ImageDraw.Draw(imagem)
+            desenho.ellipse((16, 16, 48, 48), fill=(0, 150, 255))
+            return imagem
+            
+        def ao_abrir(icone, item):
+            icone.stop()
+            if hwnd:
+                ctypes.windll.user32.ShowWindow(hwnd, 5) # 5 = SW_SHOW
+                
+        def ao_sair(icone, item):
+            icone.stop()
+            if hwnd: ctypes.windll.user32.ShowWindow(hwnd, 5)
+            self.call_from_thread(self.action_quit) 
+            
+        def iniciar_bandeja():
+            menu = pystray.Menu(pystray.MenuItem("Abrir Relógio", ao_abrir, default=True), pystray.MenuItem("Sair Totalmente", ao_sair))
+            icone = pystray.Icon("RelogioTUI", criar_icone(), "Relógio App", menu=menu)
+            icone.run()
+            
+        threading.Thread(target=iniciar_bandeja, daemon=True).start()
 
     def action_switch_tab(self, tab_id: str) -> None:
         """Muda a aba ativa instantaneamente através do atalho numérico."""
@@ -376,6 +434,36 @@ class RelogioWindowsApp(App):
             container.mount(PomodoroWidget())
             container.scroll_end(animate=False)
 
+def configurar_startup():
+    """Adiciona o script na inicialização do sistema."""
+    sistema = platform.system()
+    caminho_python = sys.executable
+    caminho_script = os.path.abspath(__file__)
+    
+    if sistema == "Windows":
+        import winreg
+        if caminho_python.endswith("python.exe") or caminho_python.endswith("pythonw.exe"):
+            comando = f'"{caminho_python}" "{caminho_script}" --minimized'
+        else:
+            comando = f'"{caminho_python}" --minimized'
+            
+        chave = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(chave, "RelogioTUI", 0, winreg.REG_SZ, comando)
+        winreg.CloseKey(chave)
+        print("Configurado para iniciar no Windows com sucesso!")
+        
+    elif sistema == "Linux":
+        caminho_autostart = os.path.expanduser("~/.config/autostart/")
+        os.makedirs(caminho_autostart, exist_ok=True)
+        desktop_file = f"[Desktop Entry]\nType=Application\nExec=gnome-terminal -- {caminho_python} {caminho_script} --minimized\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\nName=Relógio TUI\nComment=Relógio Background\n"
+        with open(os.path.join(caminho_autostart, "relogiotui.desktop"), "w") as f:
+            f.write(desktop_file)
+        print("Configurado para iniciar no Linux com sucesso!")
+
 if __name__ == "__main__":
+    if "--setup-startup" in sys.argv:
+        configurar_startup()
+        sys.exit(0)
+        
     app = RelogioWindowsApp()
     app.run()
