@@ -62,6 +62,7 @@ class RelogioWindowsApp(App):
     }
     .input_tempo:focus {
         border: none;
+        background: $boost; /* Leve destaque quando estiver digitando */
     }
     .cronometro_botoes {
         align: center middle;

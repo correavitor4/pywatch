@@ -17,7 +17,7 @@ class TemporizadorWidget(Vertical):
         """Interface do temporizador."""
         yield Input(placeholder="Nome do Temporizador", classes="cronometro_nome")
         
-        # Input para digitar o tempo vs Label para mostrar a contagem
+        # Input estilo microondas (digitar empurra os números)
         yield Input(value="00:05:00", classes="input_tempo")
         yield Label("00:05:00", classes="tempo_display")
         
@@ -59,6 +59,21 @@ class TemporizadorWidget(Vertical):
         elif event.button.has_class("remover"):
             self.pausar()
             self.remove()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Mágica do microondas: formata o texto da direita para a esquerda ao digitar."""
+        if event.input.has_class("input_tempo"):
+            # Extrai apenas os números da string digitada
+            numeros = "".join(filter(str.isdigit, event.value))
+            # Limita aos últimos 6 dígitos e preenche com zeros à esquerda
+            numeros = numeros[-6:].zfill(6)
+            # Formata de volta para HH:MM:SS
+            formatado = f"{numeros[0:2]}:{numeros[2:4]}:{numeros[4:6]}"
+            
+            # Atualiza o valor do input (apenas se for diferente para evitar loop infinito)
+            if event.value != formatado:
+                event.input.value = formatado
+                event.input.cursor_position = len(formatado) # Mantém o cursor no final
 
     def ler_tempo_input(self) -> int:
         """Lê o formato HH:MM:SS do input e converte para segundos no total."""
