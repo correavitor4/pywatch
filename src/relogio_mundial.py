@@ -31,9 +31,10 @@ class RelogioMundialWidget(Vertical):
 class FusoHorarioWidget(Vertical):
     """Widget para exibir fusos horários adicionais em forma de cartão."""
     
-    def __init__(self, **kwargs):
+    def __init__(self, fuso_inicial=None, **kwargs):
         super().__init__(**kwargs)
-        self.fuso = None
+        self.fuso_inicial = fuso_inicial
+        self.fuso = fuso_inicial
 
     def compose(self) -> ComposeResult:
         # Pega todos os fusos do sistema, filtra os úteis e os coloca em ordem alfabética
@@ -45,7 +46,11 @@ class FusoHorarioWidget(Vertical):
             opcoes = [(tz, tz) for tz in todos_fusos]
         
         with Horizontal(classes="fuso_header"):
-            yield Select(opcoes, prompt="Escolha a Cidade/Fuso", classes="select_fuso")
+            # Constrói o Select passando o valor inicial apenas se for um texto válido
+            if isinstance(self.fuso_inicial, str) and self.fuso_inicial in [op[1] for op in opcoes]:
+                yield Select(opcoes, prompt="Escolha a Cidade/Fuso", value=self.fuso_inicial, classes="select_fuso")
+            else:
+                yield Select(opcoes, prompt="Escolha a Cidade/Fuso", classes="select_fuso")
             yield Button("X", classes="remover_fuso", variant="error")
         yield Label("--:--:--", classes="fuso_hora")
         yield Label("Aguardando...", classes="fuso_data")

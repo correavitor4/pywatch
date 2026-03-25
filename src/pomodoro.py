@@ -142,4 +142,9 @@ class PomodoroWidget(Vertical):
                     for _ in range(5):
                         winsound.Beep(2000, 500) # 5 bipes altos e agudos (500ms cada)
                 except Exception: pass
+            elif sistema == "Linux":
+                try:
+                    subprocess.run(["notify-send", "--urgency=critical", "Pomodoro (TUI)", mensagem])
+                    subprocess.run(["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"])
+                except Exception: pass
         threading.Thread(target=notificar, daemon=True).start()

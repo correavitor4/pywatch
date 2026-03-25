@@ -10,21 +10,24 @@ from textual.containers import Horizontal, Vertical
 class AlarmeWidget(Vertical):
     """Widget personalizado para o Alarme."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, nome_inicial="", hora_inicial="07:00", ativo_inicial=False, **kwargs):
         super().__init__(**kwargs)
-        self.ativo = False
+        self.nome_inicial = nome_inicial
+        self.hora_inicial = hora_inicial
+        self.ativo_inicial = ativo_inicial
+        self.ativo = ativo_inicial
         self.ultimo_disparo = "" # Evita que o alarme dispare múltiplas vezes no mesmo minuto
         self.tocando = False
         self.hora_soneca = None # Armazena o tempo da soneca sem alterar o original
 
     def compose(self) -> ComposeResult:
         """Interface do alarme."""
-        yield Input(placeholder="Nome do Alarme (Ex: Acordar)", classes="cronometro_nome")
+        yield Input(value=self.nome_inicial, placeholder="Nome do Alarme (Ex: Acordar)", classes="cronometro_nome")
         
         with Horizontal(classes="alarme_header"):
             # Input estilo microondas para HH:MM
-            yield Input(value="07:00", classes="input_alarme")
-            yield Switch(value=False, classes="switch_alarme")
+            yield Input(value=self.hora_inicial, classes="input_alarme")
+            yield Switch(value=self.ativo_inicial, classes="switch_alarme")
             
         yield Label("", classes="info_soneca") # Avisa que a soneca está ativa
         with Horizontal(classes="cronometro_botoes"):

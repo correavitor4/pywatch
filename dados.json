@@ -1,0 +1,22 @@
+{
+    "alarmes": [
+        {
+            "nome": "",
+            "hora": "10:36",
+            "ativo": true
+        },
+        {
+            "nome": "",
+            "hora": "07:00",
+            "ativo": true
+        },
+        {
+            "nome": "",
+            "hora": "00:00",
+            "ativo": false
+        }
+    ],
+    "fusos": [
+        "Africa/Asmara"
+    ]
+}

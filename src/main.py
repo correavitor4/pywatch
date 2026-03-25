@@ -1,5 +1,7 @@
+import json
+import os
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, Button
+from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, Button, Input, Switch
 from textual.containers import VerticalScroll
 
 from cronometro import CronometroWidget
@@ -229,7 +231,7 @@ class RelogioWindowsApp(App):
             with TabPane("Alarmes", id="aba_alarmes"):
                 yield Button("+ Adicionar Alarme", id="btn_add_alarme", variant="primary")
                 with VerticalScroll(id="container_alarmes"):
-                    yield AlarmeWidget()
+                    pass # Será preenchido dinamicamente pelo carregar_dados()
                 
             with TabPane("Cronômetro", id="aba_cronometro"):
                 yield Button("+ Adicionar Cronômetro", id="btn_add_cronometro", variant="primary")
@@ -247,6 +249,58 @@ class RelogioWindowsApp(App):
                     yield PomodoroWidget()
         
         yield Footer()
+
+    def on_mount(self) -> None:
+        """Executa automaticamente assim que o app é montado na tela."""
+        self.carregar_dados()
+
+    def carregar_dados(self) -> None:
+        """Lê o JSON e recria os alarmes e fusos salvos na última sessão."""
+        if os.path.exists("dados.json"):
+            try:
+                with open("dados.json", "r", encoding="utf-8") as f:
+                    dados = json.load(f)
+                
+                container_alarmes = self.query_one("#container_alarmes", VerticalScroll)
+                for al in dados.get("alarmes", []):
+                    container_alarmes.mount(AlarmeWidget(nome_inicial=al.get("nome", ""), hora_inicial=al.get("hora", "07:00"), ativo_inicial=al.get("ativo", False)))
+                
+                container_fusos = self.query_one("#container_fusos", VerticalScroll)
+                for fuso in dados.get("fusos", []):
+                    container_fusos.mount(FusoHorarioWidget(fuso_inicial=fuso))
+            except Exception:
+                self.montar_padroes()
+        else:
+            self.montar_padroes()
+
+    def montar_padroes(self) -> None:
+        self.query_one("#container_alarmes", VerticalScroll).mount(AlarmeWidget())
+
+    def salvar_dados(self) -> None:
+        """Coleta os estados atuais e salva num arquivo JSON."""
+        dados = {"alarmes": [], "fusos": []}
+        try:
+            for alarme in self.query(AlarmeWidget):
+                try:
+                    dados["alarmes"].append({"nome": alarme.query_one(".cronometro_nome", Input).value, "hora": alarme.query_one(".input_alarme", Input).value, "ativo": alarme.query_one(".switch_alarme", Switch).value})
+                except Exception:
+                    pass
+            for fuso in self.query(FusoHorarioWidget):
+                try:
+                    if isinstance(fuso.fuso, str) and fuso.fuso != "Select.BLANK":
+                        dados["fusos"].append(fuso.fuso)
+                except Exception:
+                    pass
+                    
+            with open("dados.json", "w", encoding="utf-8") as f:
+                json.dump(dados, f, ensure_ascii=False, indent=4)
+        except Exception:
+            pass # Garante que falhas de salvamento não impeçam o app de fechar
+
+    def action_quit(self) -> None:
+        """Intercepta o comando de sair (tecla q ou ctrl+c) para salvar os dados antes."""
+        self.salvar_dados()
+        self.exit() # Força o encerramento seguro do Textual
 
     def action_switch_tab(self, tab_id: str) -> None:
         """Muda a aba ativa instantaneamente através do atalho numérico."""
