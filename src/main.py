@@ -338,10 +338,18 @@ class RelogioWindowsApp(App):
             ctypes.windll.user32.ShowWindow(hwnd, 0) # 0 = SW_HIDE
             
         def criar_icone():
-            imagem = Image.new('RGB', (64, 64), color=(30, 30, 30))
-            desenho = ImageDraw.Draw(imagem)
-            desenho.ellipse((16, 16, 48, 48), fill=(0, 150, 255))
-            return imagem
+            """ Carrega o ícone real do arquivo .png ou cria um de fallback. """
+            try:
+                # O script está em 'src', o ícone está na raiz.
+                base_path = os.path.dirname(os.path.abspath(__file__))
+                icon_path = os.path.join(base_path, "..", "icone.png")
+                return Image.open(icon_path)
+            except Exception:
+                # Fallback para o ícone desenhado se o arquivo não for encontrado
+                imagem = Image.new('RGB', (64, 64), color=(30, 30, 30))
+                desenho = ImageDraw.Draw(imagem)
+                desenho.ellipse((16, 16, 48, 48), fill=(0, 150, 255))
+                return imagem
             
         def ao_abrir(icone, item):
             icone.stop()
@@ -435,30 +443,28 @@ class RelogioWindowsApp(App):
             container.scroll_end(animate=False)
 
 def configurar_startup():
-    """Adiciona o script na inicialização do sistema."""
-    sistema = platform.system()
+    """Adiciona o script na inicialização do sistema (Apenas Linux)."""
+    if platform.system() != "Linux":
+        print("A configuração de inicialização automática é suportada apenas no Linux para este script.")
+        return
+
     caminho_python = sys.executable
     caminho_script = os.path.abspath(__file__)
+    comando = f"{caminho_python} {caminho_script} --minimized"
     
-    if sistema == "Windows":
-        import winreg
-        if caminho_python.endswith("python.exe") or caminho_python.endswith("pythonw.exe"):
-            comando = f'"{caminho_python}" "{caminho_script}" --minimized'
-        else:
-            comando = f'"{caminho_python}" --minimized'
-            
-        chave = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
-        winreg.SetValueEx(chave, "RelogioTUI", 0, winreg.REG_SZ, comando)
-        winreg.CloseKey(chave)
-        print("Configurado para iniciar no Windows com sucesso!")
-        
-    elif sistema == "Linux":
-        caminho_autostart = os.path.expanduser("~/.config/autostart/")
-        os.makedirs(caminho_autostart, exist_ok=True)
-        desktop_file = f"[Desktop Entry]\nType=Application\nExec=gnome-terminal -- {caminho_python} {caminho_script} --minimized\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\nName=Relógio TUI\nComment=Relógio Background\n"
-        with open(os.path.join(caminho_autostart, "relogiotui.desktop"), "w") as f:
-            f.write(desktop_file)
-        print("Configurado para iniciar no Linux com sucesso!")
+    caminho_autostart = os.path.expanduser("~/.config/autostart/")
+    os.makedirs(caminho_autostart, exist_ok=True)
+    desktop_file = (
+        f"[Desktop Entry]\n"
+        f"Type=Application\n"
+        f"Exec={comando}\n"
+        f"Terminal=true\n"
+        f"Name=Relógio TUI\n"
+        f"Comment=Relógio em segundo plano\n"
+    )
+    with open(os.path.join(caminho_autostart, "relogiotui.desktop"), "w") as f:
+        f.write(desktop_file)
+    print("Configurado para iniciar no Linux com sucesso!")
 
 if __name__ == "__main__":
     if "--setup-startup" in sys.argv:
