@@ -15,6 +15,7 @@ class AlarmeWidget(Vertical):
         self.ativo = False
         self.ultimo_disparo = "" # Evita que o alarme dispare múltiplas vezes no mesmo minuto
         self.tocando = False
+        self.hora_soneca = None # Armazena o tempo da soneca sem alterar o original
 
     def compose(self) -> ComposeResult:
         """Interface do alarme."""
@@ -25,6 +26,7 @@ class AlarmeWidget(Vertical):
             yield Input(value="07:00", classes="input_alarme")
             yield Switch(value=False, classes="switch_alarme")
             
+        yield Label("", classes="info_soneca") # Avisa que a soneca está ativa
         with Horizontal(classes="cronometro_botoes"):
             yield Button("Parar", classes="parar", variant="success")
             yield Button("+ 5m", classes="soneca_5", variant="primary")
@@ -32,6 +34,10 @@ class AlarmeWidget(Vertical):
             yield Button("Remover", classes="remover", variant="error")
 
     def on_mount(self) -> None:
+        # Esconde os botões de soneca e a mensagem até que o alarme toque
+        self.query_one(".soneca_5", Button).display = False
+        self.query_one(".soneca_15", Button).display = False
+        self.query_one(".info_soneca", Label).display = False
         # Checa a hora atual do sistema a cada 1 segundo
         self.set_interval(1.0, self.checar_alarme)
 
@@ -42,17 +48,21 @@ class AlarmeWidget(Vertical):
             # Se desligar a chavinha enquanto a música toca, ele para o som
             if not self.ativo and self.tocando:
                 self.parar()
+            if not self.ativo:
+                self.limpar_soneca() # Cancela sonecas pendentes se desligar
 
     def checar_alarme(self) -> None:
         if not self.ativo:
             return
         
+        agora_completo = datetime.now().strftime("%Y-%m-%d %H:%M")
         agora = datetime.now().strftime("%H:%M")
         hora_alarme = self.query_one(".input_alarme", Input).value
         
-        if agora == hora_alarme and self.ultimo_disparo != agora:
-            self.ultimo_disparo = agora
-            # O switch continua ativo nativamente para o dia seguinte!
+        # Toca se for a hora oficial OU a hora da soneca
+        if (agora == hora_alarme or agora == self.hora_soneca) and self.ultimo_disparo != agora_completo:
+            self.ultimo_disparo = agora_completo
+            self.limpar_soneca() # Limpa a soneca atual pois ela já está tocando
             
             self.tocar()
             
@@ -63,12 +73,17 @@ class AlarmeWidget(Vertical):
         """Inicia o som do alarme de forma contínua."""
         self.tocando = True
         self.add_class("tocando") # Feedback visual no cartão
+        
+        # Revela os botões de soneca
+        self.query_one(".soneca_5", Button).display = True
+        self.query_one(".soneca_15", Button).display = True
+        
         sistema = platform.system()
         if sistema == "Windows":
             try:
                 import winsound
-                # Toca música/som de notificação do Windows repetidamente em 2º plano
-                winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_LOOP | winsound.SND_ASYNC)
+                # Toca o som real de Alarme do Windows em loop
+                winsound.PlaySound("C:\\Windows\\Media\\Alarm01.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
             except Exception:
                 pass
         elif sistema == "Linux":
@@ -81,6 +96,12 @@ class AlarmeWidget(Vertical):
         """Interrompe o som e reseta o visual do alarme."""
         self.tocando = False
         self.remove_class("tocando")
+        
+        # Esconde os botões de soneca novamente
+        self.query_one(".soneca_5", Button).display = False
+        self.query_one(".soneca_15", Button).display = False
+        self.limpar_soneca() # Cancela a soneca se o botão Parar for pressionado
+        
         sistema = platform.system()
         if sistema == "Windows":
             try:
@@ -108,27 +129,33 @@ class AlarmeWidget(Vertical):
     def adicionar_soneca(self, minutos: int) -> None:
         """Adiciona minutos ao horário do alarme atual (Soneca)."""
         self.parar() # Para a música atual ao adicionar soneca
-        hora_str = self.query_one(".input_alarme", Input).value
-        try:
-            h, m = map(int, hora_str.split(":"))
-            m += minutos
-            h = (h + m // 60) % 24
-            m = m % 60
-            novo_tempo = f"{h:02}:{m:02}"
-            
-            self.query_one(".input_alarme", Input).value = novo_tempo
-            self.ultimo_disparo = "" # Permite disparar de novo no novo horário
-            self.ativo = True
-            self.query_one(".switch_alarme", Switch).value = True
-        except Exception:
-            pass
+        
+        # Calcula a soneca baseada na hora exata em que você clicou no botão
+        agora_dt = datetime.now()
+        h = agora_dt.hour
+        m = agora_dt.minute + minutos
+        h = (h + m // 60) % 24
+        m = m % 60
+        self.hora_soneca = f"{h:02}:{m:02}"
+        
+        # Mostra o aviso visual
+        label_info = self.query_one(".info_soneca", Label)
+        label_info.update(f"Soneca adiada para {self.hora_soneca}")
+        label_info.display = True
+
+    def limpar_soneca(self) -> None:
+        self.hora_soneca = None
+        self.query_one(".info_soneca", Label).display = False
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Máscara estilo microondas para formatar em HH:MM."""
         if event.input.has_class("input_alarme"):
             numeros = "".join(filter(str.isdigit, event.value))
             numeros = numeros[-4:].zfill(4)
-            formatado = f"{numeros[0:2]}:{numeros[2:4]}"
+            
+            h = min(int(numeros[0:2]), 23)
+            m = min(int(numeros[2:4]), 59)
+            formatado = f"{h:02}:{m:02}"
             
             if event.value != formatado:
                 event.input.value = formatado

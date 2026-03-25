@@ -135,6 +135,13 @@ class RelogioWindowsApp(App):
         border: none;
         background: $boost;
     }
+    .info_soneca {
+        width: 100%;
+        text-align: center;
+        color: $warning;
+        text-style: italic;
+        margin-bottom: 1;
+    }
     AlarmeWidget.tocando {
         border: round $error; /* Borda fica em destaque vermelho quando toca */
         background: $error 15%;
@@ -158,7 +165,15 @@ class RelogioWindowsApp(App):
     # Atalhos de teclado que aparecerão no rodapé
     BINDINGS = [
         ("q", "quit", "Sair"),
-        ("d", "toggle_dark", "Alternar Tema Escuro/Claro")
+        ("d", "toggle_dark", "Tema"),
+        ("1", "switch_tab('aba_relogio_mundial')", "Mundial"),
+        ("2", "switch_tab('aba_alarmes')", "Alarmes"),
+        ("3", "switch_tab('aba_cronometro')", "Cronômetro"),
+        ("4", "switch_tab('aba_temporizador')", "Temporizador"),
+        ("left", "previous_tab", "Aba Anterior"),
+        ("right", "next_tab", "Próxima Aba"),
+        ("n", "add_item", "Novo"),
+        ("r", "remove_item", "Remover Último")
     ]
 
     def compose(self) -> ComposeResult:
@@ -190,6 +205,55 @@ class RelogioWindowsApp(App):
                     yield TemporizadorWidget()
         
         yield Footer()
+
+    def action_switch_tab(self, tab_id: str) -> None:
+        """Muda a aba ativa instantaneamente através do atalho numérico."""
+        self.query_one(TabbedContent).active = tab_id
+
+    def action_previous_tab(self) -> None:
+        """Navega para a aba à esquerda."""
+        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador"]
+        tc = self.query_one(TabbedContent)
+        if tc.active in abas:
+            idx = abas.index(tc.active)
+            tc.active = abas[(idx - 1) % len(abas)]
+
+    def action_next_tab(self) -> None:
+        """Navega para a aba à direita."""
+        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador"]
+        tc = self.query_one(TabbedContent)
+        if tc.active in abas:
+            idx = abas.index(tc.active)
+            tc.active = abas[(idx + 1) % len(abas)]
+
+    def action_add_item(self) -> None:
+        """Aciona o botão de adicionar correspondente à aba atual."""
+        aba_ativa = self.query_one(TabbedContent).active
+        mapa_botoes = {
+            "aba_relogio_mundial": "#btn_add_fuso",
+            "aba_alarmes": "#btn_add_alarme",
+            "aba_cronometro": "#btn_add_cronometro",
+            "aba_temporizador": "#btn_add_temporizador"
+        }
+        if aba_ativa in mapa_botoes:
+            self.query_one(mapa_botoes[aba_ativa], Button).press()
+
+    def action_remove_item(self) -> None:
+        """Remove o último item adicionado na aba atual garantindo o encerramento correto."""
+        aba_ativa = self.query_one(TabbedContent).active
+        mapa_containers = {
+            "aba_relogio_mundial": "#container_fusos",
+            "aba_alarmes": "#container_alarmes",
+            "aba_cronometro": "#container_cronometros",
+            "aba_temporizador": "#container_temporizadores"
+        }
+        if aba_ativa in mapa_containers:
+            container = self.query_one(mapa_containers[aba_ativa], VerticalScroll)
+            if container.children:
+                ultimo_item = container.children[-1]
+                # Busca o botão de remover específico deste widget e simula o clique
+                seletor = ".remover_fuso" if aba_ativa == "aba_relogio_mundial" else ".remover"
+                ultimo_item.query_one(seletor, Button).press()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Detecta o botão de adicionar e anexa um novo widget de cronômetro."""

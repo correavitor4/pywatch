@@ -104,8 +104,12 @@ class TemporizadorWidget(Vertical):
             numeros = "".join(filter(str.isdigit, event.value))
             # Limita aos últimos 6 dígitos e preenche com zeros à esquerda
             numeros = numeros[-6:].zfill(6)
-            # Formata de volta para HH:MM:SS
-            formatado = f"{numeros[0:2]}:{numeros[2:4]}:{numeros[4:6]}"
+            
+            # Impede que horas, minutos e segundos ultrapassem o limite de 24h reais
+            h = min(int(numeros[0:2]), 23)
+            m = min(int(numeros[2:4]), 59)
+            s = min(int(numeros[4:6]), 59)
+            formatado = f"{h:02}:{m:02}:{s:02}"
             
             # Atualiza o valor do input (apenas se for diferente para evitar loop infinito)
             if event.value != formatado:
