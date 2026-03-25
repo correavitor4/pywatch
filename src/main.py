@@ -3,6 +3,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, Butto
 from textual.containers import VerticalScroll
 
 from cronometro import CronometroWidget
+from temporizador import TemporizadorWidget
 
 class RelogioWindowsApp(App):
     """Clone do aplicativo de Relógio do Windows 11 em formato TUI."""
@@ -21,7 +22,7 @@ class RelogioWindowsApp(App):
     #aba_cronometro {
         align: center top;
     }
-    CronometroWidget {
+    CronometroWidget, TemporizadorWidget {
         align: center middle;
         height: auto;
         min-height: 10;
@@ -51,6 +52,17 @@ class RelogioWindowsApp(App):
     .tempo_display.pausado {
         color: $warning; /* Fica amarelo quando pausado */
     }
+    .input_tempo {
+        width: 100%;
+        text-align: center;
+        text-style: bold;
+        border: none;
+        background: transparent;
+        margin-bottom: 1;
+    }
+    .input_tempo:focus {
+        border: none;
+    }
     .cronometro_botoes {
         align: center middle;
         height: auto;
@@ -67,7 +79,7 @@ class RelogioWindowsApp(App):
         text-align: center;
         color: $text-muted;
     }
-    #container_cronometros {
+    #container_cronometros, #container_temporizadores {
         width: 100%;
         height: 1fr;
         layout: grid;
@@ -75,7 +87,7 @@ class RelogioWindowsApp(App):
         grid-rows: auto; /* Permite que as linhas usem sua altura real, ativando o scroll */
         grid-gutter: 1 2; /* Adiciona espaçamento vertical e horizontal entre os cartões */
     }
-    #btn_add_cronometro {
+    #btn_add_cronometro, #btn_add_temporizador {
         margin: 1;
     }
     Button {
@@ -108,7 +120,9 @@ class RelogioWindowsApp(App):
                     yield CronometroWidget()
                 
             with TabPane("Temporizador", id="aba_temporizador"):
-                yield Label("A contagem regressiva ficará aqui.")
+                yield Button("+ Adicionar Temporizador", id="btn_add_temporizador", variant="primary")
+                with VerticalScroll(id="container_temporizadores"):
+                    yield TemporizadorWidget()
         
         yield Footer()
 
@@ -117,6 +131,10 @@ class RelogioWindowsApp(App):
         if event.button.id == "btn_add_cronometro":
             container = self.query_one("#container_cronometros", VerticalScroll)
             container.mount(CronometroWidget())
+            container.scroll_end(animate=False)
+        elif event.button.id == "btn_add_temporizador":
+            container = self.query_one("#container_temporizadores", VerticalScroll)
+            container.mount(TemporizadorWidget())
             container.scroll_end(animate=False)
 
 if __name__ == "__main__":
