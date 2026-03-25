@@ -1,75 +1,8 @@
-from time import monotonic
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, TabbedContent, TabPane, Label, Button
-from textual.containers import Horizontal, Vertical
-from textual.reactive import reactive
+from textual.containers import VerticalScroll
 
-class CronometroWidget(Vertical):
-    """Widget personalizado para o Cronômetro."""
-    
-    # `reactive` avisa o Textual para atualizar a tela quando esta variável mudar
-    tempo_decorrido = reactive(0.0)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.inicio = 0.0
-        self.rodando = False
-        self.atualizador = None
-
-    def compose(self) -> ComposeResult:
-        """Interface do cronômetro."""
-        yield Label("00:00:00.00", id="tempo_display")
-        with Horizontal(id="cronometro_botoes"):
-            yield Button("Iniciar", id="iniciar_pausar", variant="success")
-            yield Button("Zerar", id="zerar", variant="error")
-
-    def watch_tempo_decorrido(self, tempo: float) -> None:
-        """Método chamado automaticamente quando `tempo_decorrido` muda."""
-        minutos, segundos = divmod(tempo, 60)
-        horas, minutos = divmod(minutos, 60)
-        decimos = int((tempo - int(tempo)) * 100)
-        
-        # Formata o tempo e atualiza a Label na tela
-        display = f"{int(horas):02}:{int(minutos):02}:{int(segundos):02}.{decimos:02}"
-        self.query_one("#tempo_display", Label).update(display)
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Gerencia os cliques nos botões Iniciar/Pausar e Zerar."""
-        botao_id = event.button.id
-        if botao_id == "iniciar_pausar":
-            if self.rodando:
-                self.pausar()
-            else:
-                self.iniciar()
-        elif botao_id == "zerar":
-            self.zerar()
-
-    def iniciar(self) -> None:
-        self.rodando = True
-        self.inicio = monotonic() - self.tempo_decorrido
-        # Cria um loop que executa a cada 1/60 segundos (60 FPS)
-        self.atualizador = self.set_interval(1 / 60, self.atualizar_tempo)
-        botao = self.query_one("#iniciar_pausar", Button)
-        botao.label = "Pausar"
-        botao.variant = "warning"
-
-    def pausar(self) -> None:
-        self.rodando = False
-        if self.atualizador:
-            self.atualizador.pause()
-        botao = self.query_one("#iniciar_pausar", Button)
-        botao.label = "Retomar"
-        botao.variant = "success"
-
-    def zerar(self) -> None:
-        self.pausar()
-        self.tempo_decorrido = 0.0
-        botao = self.query_one("#iniciar_pausar", Button)
-        botao.label = "Iniciar"
-        botao.variant = "success"
-
-    def atualizar_tempo(self) -> None:
-        self.tempo_decorrido = monotonic() - self.inicio
+from cronometro import CronometroWidget
 
 class RelogioWindowsApp(App):
     """Clone do aplicativo de Relógio do Windows 11 em formato TUI."""
@@ -85,17 +18,65 @@ class RelogioWindowsApp(App):
     Label {
         color: $text-muted;
     }
+    #aba_cronometro {
+        align: center top;
+    }
     CronometroWidget {
         align: center middle;
+        height: auto;
+        min-height: 10;
+        width: 100%;
+        margin: 0;
+        border: round $primary-muted; /* Borda mais suave e elegante */
+        padding: 1 2;
+        background: $panel; /* Fundo que simula a elevação do Windows 11 */
     }
-    #tempo_display {
+    .cronometro_nome {
+        width: 100%;
+        border: none;
+        background: transparent;
         text-align: center;
-        text-style: bold;
     }
-    #cronometro_botoes {
+    .cronometro_nome:focus {
+        border: none;
+    }
+    .tempo_display {
+        text-align: center; /* Alinha os dígitos horizontalmente ao centro */
+        text-style: bold;
+        margin-bottom: 1;
+    }
+    .tempo_display.rodando {
+        color: $success; /* Fica verde quando está em contagem */
+    }
+    .tempo_display.pausado {
+        color: $warning; /* Fica amarelo quando pausado */
+    }
+    .cronometro_botoes {
         align: center middle;
         height: auto;
         margin-top: 1;
+    }
+    .laps_container {
+        height: auto;
+        max-height: 5; /* Limita a altura da lista de voltas visíveis */
+        width: 100%;
+        margin-top: 1;
+    }
+    .lap_label {
+        width: 100%;
+        text-align: center;
+        color: $text-muted;
+    }
+    #container_cronometros {
+        width: 100%;
+        height: 1fr;
+        layout: grid;
+        grid-size: 2; /* Cria 2 colunas, forçando o 3º item para a linha seguinte */
+        grid-rows: auto; /* Permite que as linhas usem sua altura real, ativando o scroll */
+        grid-gutter: 1 2; /* Adiciona espaçamento vertical e horizontal entre os cartões */
+    }
+    #btn_add_cronometro {
+        margin: 1;
     }
     Button {
         margin: 0 2;
@@ -122,12 +103,21 @@ class RelogioWindowsApp(App):
                 yield Label("Lista de alarmes configuráveis ficará aqui.")
                 
             with TabPane("Cronômetro", id="aba_cronometro"):
-                yield CronometroWidget()
+                yield Button("+ Adicionar Cronômetro", id="btn_add_cronometro", variant="primary")
+                with VerticalScroll(id="container_cronometros"):
+                    yield CronometroWidget()
                 
             with TabPane("Temporizador", id="aba_temporizador"):
                 yield Label("A contagem regressiva ficará aqui.")
         
         yield Footer()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Detecta o botão de adicionar e anexa um novo widget de cronômetro."""
+        if event.button.id == "btn_add_cronometro":
+            container = self.query_one("#container_cronometros", VerticalScroll)
+            container.mount(CronometroWidget())
+            container.scroll_end(animate=False)
 
 if __name__ == "__main__":
     app = RelogioWindowsApp()
