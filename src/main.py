@@ -6,6 +6,7 @@ from cronometro import CronometroWidget
 from temporizador import TemporizadorWidget
 from relogio_mundial import RelogioMundialWidget, FusoHorarioWidget
 from alarme import AlarmeWidget
+from pomodoro import PomodoroWidget
 
 class RelogioWindowsApp(App):
     """Clone do aplicativo de Relógio do Windows 11 em formato TUI."""
@@ -21,10 +22,10 @@ class RelogioWindowsApp(App):
     Label {
         color: $text-muted;
     }
-    #aba_cronometro, #aba_relogio_mundial, #aba_alarmes {
+    #aba_cronometro, #aba_relogio_mundial, #aba_alarmes, #aba_pomodoro {
         align: center top;
     }
-    CronometroWidget, TemporizadorWidget, FusoHorarioWidget, AlarmeWidget {
+    CronometroWidget, TemporizadorWidget, FusoHorarioWidget, AlarmeWidget, PomodoroWidget {
         align: center middle;
         height: auto;
         min-height: 10;
@@ -146,7 +147,42 @@ class RelogioWindowsApp(App):
         border: round $error; /* Borda fica em destaque vermelho quando toca */
         background: $error 15%;
     }
-    #container_cronometros, #container_temporizadores, #container_fusos, #container_alarmes {
+    .pomodoro_config_container {
+        width: 100%;
+        height: auto;
+        align: center middle;
+        margin-bottom: 1;
+    }
+    .pomodoro_config_tempos, .pomodoro_config_auto {
+        width: auto;
+        height: auto;
+        align: center middle;
+    }
+    .pomodoro_config_auto {
+        margin-top: 1;
+    }
+    .label_pomodoro {
+        content-align: center middle;
+        color: $text-muted;
+        margin: 0 1;
+    }
+    .input_pomodoro_foco, .input_pomodoro_pausa {
+        width: 8;
+        text-align: center;
+        text-style: bold;
+        border: none;
+        background: transparent;
+    }
+    .input_pomodoro_foco:focus, .input_pomodoro_pausa:focus {
+        border: none;
+        background: $boost;
+    }
+    .pomodoro_modo {
+        text-align: center;
+        text-style: bold;
+        color: $accent;
+    }
+    #container_cronometros, #container_temporizadores, #container_fusos, #container_alarmes, #container_pomodoros {
         width: 100%;
         height: 1fr;
         layout: grid;
@@ -154,7 +190,7 @@ class RelogioWindowsApp(App):
         grid-rows: auto; /* Permite que as linhas usem sua altura real, ativando o scroll */
         grid-gutter: 1 2; /* Adiciona espaçamento vertical e horizontal entre os cartões */
     }
-    #btn_add_cronometro, #btn_add_temporizador, #btn_add_fuso, #btn_add_alarme {
+    #btn_add_cronometro, #btn_add_temporizador, #btn_add_fuso, #btn_add_alarme, #btn_add_pomodoro {
         margin: 1;
     }
     Button {
@@ -170,6 +206,7 @@ class RelogioWindowsApp(App):
         ("2", "switch_tab('aba_alarmes')", "Alarmes"),
         ("3", "switch_tab('aba_cronometro')", "Cronômetro"),
         ("4", "switch_tab('aba_temporizador')", "Temporizador"),
+        ("5", "switch_tab('aba_pomodoro')", "Pomodoro"),
         ("left", "previous_tab", "Aba Anterior"),
         ("right", "next_tab", "Próxima Aba"),
         ("n", "add_item", "Novo"),
@@ -203,6 +240,11 @@ class RelogioWindowsApp(App):
                 yield Button("+ Adicionar Temporizador", id="btn_add_temporizador", variant="primary")
                 with VerticalScroll(id="container_temporizadores"):
                     yield TemporizadorWidget()
+                    
+            with TabPane("Pomodoro", id="aba_pomodoro"):
+                yield Button("+ Adicionar Pomodoro", id="btn_add_pomodoro", variant="primary")
+                with VerticalScroll(id="container_pomodoros"):
+                    yield PomodoroWidget()
         
         yield Footer()
 
@@ -212,7 +254,7 @@ class RelogioWindowsApp(App):
 
     def action_previous_tab(self) -> None:
         """Navega para a aba à esquerda."""
-        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador"]
+        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador", "aba_pomodoro"]
         tc = self.query_one(TabbedContent)
         if tc.active in abas:
             idx = abas.index(tc.active)
@@ -220,7 +262,7 @@ class RelogioWindowsApp(App):
 
     def action_next_tab(self) -> None:
         """Navega para a aba à direita."""
-        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador"]
+        abas = ["aba_relogio_mundial", "aba_alarmes", "aba_cronometro", "aba_temporizador", "aba_pomodoro"]
         tc = self.query_one(TabbedContent)
         if tc.active in abas:
             idx = abas.index(tc.active)
@@ -233,7 +275,8 @@ class RelogioWindowsApp(App):
             "aba_relogio_mundial": "#btn_add_fuso",
             "aba_alarmes": "#btn_add_alarme",
             "aba_cronometro": "#btn_add_cronometro",
-            "aba_temporizador": "#btn_add_temporizador"
+            "aba_temporizador": "#btn_add_temporizador",
+            "aba_pomodoro": "#btn_add_pomodoro"
         }
         if aba_ativa in mapa_botoes:
             self.query_one(mapa_botoes[aba_ativa], Button).press()
@@ -245,7 +288,8 @@ class RelogioWindowsApp(App):
             "aba_relogio_mundial": "#container_fusos",
             "aba_alarmes": "#container_alarmes",
             "aba_cronometro": "#container_cronometros",
-            "aba_temporizador": "#container_temporizadores"
+            "aba_temporizador": "#container_temporizadores",
+            "aba_pomodoro": "#container_pomodoros"
         }
         if aba_ativa in mapa_containers:
             container = self.query_one(mapa_containers[aba_ativa], VerticalScroll)
@@ -272,6 +316,10 @@ class RelogioWindowsApp(App):
         elif event.button.id == "btn_add_alarme":
             container = self.query_one("#container_alarmes", VerticalScroll)
             container.mount(AlarmeWidget())
+            container.scroll_end(animate=False)
+        elif event.button.id == "btn_add_pomodoro":
+            container = self.query_one("#container_pomodoros", VerticalScroll)
+            container.mount(PomodoroWidget())
             container.scroll_end(animate=False)
 
 if __name__ == "__main__":

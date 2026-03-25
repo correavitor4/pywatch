@@ -56,6 +56,7 @@ class TemporizadorWidget(Vertical):
             self.disparar_alarme(nome)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.parar_som() # Qualquer botão que o usuário clique faz o temporizador se silenciar
         if event.button.has_class("iniciar_pausar"):
             if self.rodando:
                 self.pausar()
@@ -67,8 +68,16 @@ class TemporizadorWidget(Vertical):
             self.pausar()
             self.remove()
 
+    def parar_som(self) -> None:
+        """Expurga/desliga qualquer som que o temporizador esteja emitindo."""
+        if platform.system() == "Windows":
+            try:
+                import winsound
+                winsound.PlaySound(None, winsound.SND_PURGE)
+            except Exception: pass
+
     def disparar_alarme(self, nome: str) -> None:
-        """Emite notificação nativa e som incisivo dependendo do Sistema Operacional."""
+        """Emite notificação e som oficial contínuo no Windows."""
         sistema = platform.system()
         mensagem = f"O temporizador '{nome}' chegou ao fim!" if nome else "O temporizador chegou ao fim!"
 
@@ -76,13 +85,15 @@ class TemporizadorWidget(Vertical):
             if sistema == "Windows":
                 try:
                     import winsound
-                    # Toque incisivo: 3 bipes de alta frequência (1500Hz)
-                    for _ in range(3):
-                        winsound.Beep(1500, 400)
+                    winsound.PlaySound("C:\\Windows\\Media\\Alarm01.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
                 except Exception:
                     pass
-                # Mostra janela pop-up nativa na frente de tudo através do PowerShell
-                cmd = f"Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('{mensagem}', 'Temporizador', 0, 64)"
+                cmd = f"""
+                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null;
+                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument;
+                $xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>Temporizador</text><text>{mensagem}</text></binding></visual></toast>');
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Relógio TUI').Show([Windows.UI.Notifications.ToastNotification]::new($xml))
+                """
                 subprocess.run(["powershell", "-Command", cmd], creationflags=0x08000000)
             
             elif sistema == "Linux":

@@ -171,9 +171,9 @@ class AlarmeWidget(Vertical):
                 # Usa script PowerShell para invocar Notificação Toast nativa (no canto da tela)
                 cmd = f"""
                 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null;
-                \$xml = New-Object Windows.Data.Xml.Dom.XmlDocument;
-                \$xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>Relógio App</text><text>{mensagem}</text></binding></visual></toast>');
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Relógio TUI').Show([Windows.UI.Notifications.ToastNotification]::new(\$xml))
+                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument;
+                $xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>Relógio App</text><text>{mensagem}</text></binding></visual></toast>');
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Relógio TUI').Show([Windows.UI.Notifications.ToastNotification]::new($xml))
                 """
                 subprocess.run(["powershell", "-Command", cmd], creationflags=0x08000000)
         threading.Thread(target=tarefa_notificacao, daemon=True).start()
