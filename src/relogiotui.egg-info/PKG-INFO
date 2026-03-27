@@ -1,3 +1,14 @@
+Metadata-Version: 2.4
+Name: relogiotui
+Version: 0.1.0
+Summary: Relógio TUI estilo Windows com cronômetro, temporizador, alarmes e pomodoro
+Author: Desenvolvedor
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: textual
+Requires-Dist: pystray
+Requires-Dist: Pillow
+
 # Relógio TUI - Clone do Relógio do Windows 11
 
 ![Ícone do Relógio](icone.png)

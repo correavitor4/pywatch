@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+src/alarme.py
+src/cronometro.py
+src/main.py
+src/pomodoro.py
+src/relogio_mundial.py
+src/temporizador.py
+src/relogiotui.egg-info/PKG-INFO
+src/relogiotui.egg-info/SOURCES.txt
+src/relogiotui.egg-info/dependency_links.txt
+src/relogiotui.egg-info/entry_points.txt
+src/relogiotui.egg-info/requires.txt
+src/relogiotui.egg-info/top_level.txt

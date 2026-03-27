@@ -17,6 +17,8 @@
         }
     ],
     "fusos": [
-        "Africa/Asmara"
+        "Europe/Brussels",
+        "America/Montreal",
+        "Mexico/General"
     ]
 }

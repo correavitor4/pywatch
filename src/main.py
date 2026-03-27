@@ -466,10 +466,14 @@ def configurar_startup():
         f.write(desktop_file)
     print("Configurado para iniciar no Linux com sucesso!")
 
-if __name__ == "__main__":
+def main() -> None:
     if "--setup-startup" in sys.argv:
         configurar_startup()
         sys.exit(0)
-        
+
     app = RelogioWindowsApp()
     app.run()
+
+
+if __name__ == "__main__":
+    main()

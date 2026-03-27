@@ -1,0 +1,19 @@
+[project]
+name = "relogiotui"
+version = "0.1.0"
+description = "Relógio TUI estilo Windows com cronômetro, temporizador, alarmes e pomodoro"
+authors = [ { name = "Desenvolvedor" } ]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "textual",
+    "pystray",
+    "Pillow",
+]
+
+[project.scripts]
+pywatch = "main:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = ["main"]
