@@ -19,7 +19,7 @@ class PomodoroWidget(Vertical):
         self.atualizador = None
         self.modo = "Foco"
         self.tempos = {"Foco": 25 * 60, "Curta": 5 * 60} # Removido "Longa" daqui
-        self.focos_concluidos = 0q
+        self.focos_concluidos = 0
 
     def compose(self) -> ComposeResult:
         yield Input(placeholder="O que você vai focar agora?", classes="cronometro_nome")
