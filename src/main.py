@@ -188,11 +188,14 @@ class RelogioWindowsApp(App):
     }
     #container_cronometros, #container_temporizadores, #container_fusos, #container_alarmes, #container_pomodoros {
         width: 100%;
-        height: 1fr;
-        layout: grid;
-        grid-size: 2; /* Cria 2 colunas, forçando o 3º item para a linha seguinte */
-        grid-rows: auto; /* Permite que as linhas usem sua altura real, ativando o scroll */
-        grid-gutter: 1 2; /* Adiciona espaçamento vertical e horizontal entre os cartões */
+        height: auto;
+        layout: vertical;
+        padding: 0;
+        margin: 0;
+    }
+    CronometroWidget, TemporizadorWidget, FusoHorarioWidget, AlarmeWidget, PomodoroWidget {
+        width: 100%;
+        margin-bottom: 1;
     }
     #btn_add_cronometro, #btn_add_temporizador, #btn_add_fuso, #btn_add_alarme, #btn_add_pomodoro {
         margin: 1;
