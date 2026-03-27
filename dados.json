@@ -1,21 +1,5 @@
 {
-    "alarmes": [
-        {
-            "nome": "qqq",
-            "hora": "07:00",
-            "ativo": true
-        },
-        {
-            "nome": "",
-            "hora": "00:59",
-            "ativo": false
-        },
-        {
-            "nome": "",
-            "hora": "09:22",
-            "ativo": false
-        }
-    ],
+    "alarmes": [],
     "fusos": [
         "Europe/Brussels",
         "America/Montreal",

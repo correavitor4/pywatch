@@ -17,10 +17,9 @@ class PomodoroWidget(Vertical):
         super().__init__(**kwargs)
         self.rodando = False
         self.atualizador = None
-        self.modo = "Foco"  # Pode ser "Foco", "Curta" ou "Longa"
-        self.tempos = {"Foco": 25 * 60, "Curta": 5 * 60, "Longa": 15 * 60}
-        self.focos_concluidos = 0
-        self.long_break_interval = 4
+        self.modo = "Foco"
+        self.tempos = {"Foco": 25 * 60, "Curta": 5 * 60} # Removido "Longa" daqui
+        self.focos_concluidos = 0q
 
     def compose(self) -> ComposeResult:
         yield Input(placeholder="O que você vai focar agora?", classes="cronometro_nome")
@@ -31,11 +30,6 @@ class PomodoroWidget(Vertical):
                 yield Input(value="25", classes="input_pomodoro_foco", max_length=2)
                 yield Label("Short Break:", classes="label_pomodoro")
                 yield Input(value="05", classes="input_pomodoro_curta", max_length=2)
-            with Horizontal(classes="pomodoro_config_tempos"):
-                yield Label("Long Break:", classes="label_pomodoro")
-                yield Input(value="15", classes="input_pomodoro_longa", max_length=2)
-                yield Label("Long every:", classes="label_pomodoro")
-                yield Input(value="4", classes="input_pomodoro_long_interval", max_length=2)
             with Horizontal(classes="pomodoro_config_auto"):
                 yield Label("Ciclos automáticos", classes="label_pomodoro")
                 yield Switch(value=False, classes="switch_auto")
@@ -80,33 +74,38 @@ class PomodoroWidget(Vertical):
             self.remove()
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        """Aplica a máscara e atualiza os tempos do pomodoro simultaneamente."""
-        if event.input.has_class("input_pomodoro_foco") or event.input.has_class("input_pomodoro_curta") or event.input.has_class("input_pomodoro_longa") or event.input.has_class("input_pomodoro_long_interval"):
+        """Aplica a máscara e atualiza os tempos simultaneamente."""
+        if event.input.has_class("input_pomodoro_foco") or event.input.has_class("input_pomodoro_curta"):
             numeros = "".join(filter(str.isdigit, event.value))[:2]
             
             if event.value != numeros:
                 event.input.value = numeros
                 event.input.cursor_position = len(numeros)
             
+            # Força a atualização dos valores internos assim que o usuário digita
             self.atualizar_tempos()
+            
+            # Se o cronômetro estiver parado, já atualiza o display visual
             if not self.rodando:
                 self.tempo_restante = self.tempos[self.modo]
 
     def formatar_inputs(self) -> None:
-        """Aplica o limite visual e o preenchimento de zeros aos inputs."""
-        foco = self.query_one(".input_pomodoro_foco", Input)
-        curta = self.query_one(".input_pomodoro_curta", Input)
-        longa = self.query_one(".input_pomodoro_longa", Input)
-        intervalo_longa = self.query_one(".input_pomodoro_long_interval", Input)
+        """Aplica o limite visual e o preenchimento de zeros apenas aos inputs existentes."""
+        try:
+            foco = self.query_one(".input_pomodoro_foco", Input)
+            curta = self.query_one(".input_pomodoro_curta", Input)
 
-        if not foco.has_focus:
-            foco.value = f"{min(int(foco.value or '0'), 60):02}"
-        if not curta.has_focus:
-            curta.value = f"{min(int(curta.value or '0'), 60):02}"
-        if not longa.has_focus:
-            longa.value = f"{min(int(longa.value or '0'), 60):02}"
-        if not intervalo_longa.has_focus:
-            intervalo_longa.value = f"{max(1, min(int(intervalo_longa.value or '4'), 12)):02}"
+            if not foco.has_focus:
+                # Garante que o valor seja um número entre 0 e 60, formatado com 2 dígitos
+                val = "".join(filter(str.isdigit, foco.value))
+                foco.value = f"{min(int(val or '0'), 60):02}"
+                
+            if not curta.has_focus:
+                val = "".join(filter(str.isdigit, curta.value))
+                curta.value = f"{min(int(val or '0'), 60):02}"
+        except Exception:
+            # Silencia erros caso os widgets ainda não tenham sido montados
+            pass
 
     def iniciar(self) -> None:
         self.formatar_inputs()
@@ -148,48 +147,51 @@ class PomodoroWidget(Vertical):
         self.query_one(".iniciar_pausar", Button).variant = "success"
 
     def alternar_modo(self, auto_start=False) -> None:
-        """Muda o modo conforme ciclo Pomodoro e atualiza contadores."""
+        """Muda o modo estritamente entre Foco e Curta (sem intervalo longo)."""
         self.pausar()
 
+        # Lógica simplificada: Se era foco, vai para curta. Se era curta, volta para foco.
         if self.modo == "Foco":
             self.focos_concluidos += 1
             self.sessoes_concluidas = self.focos_concluidos
-            self.long_break_interval = max(1, min(self.long_break_interval, 12))
-            if (self.focos_concluidos % self.long_break_interval) == 0:
-                self.modo = "Longa"
-            else:
-                self.modo = "Curta"
+            self.modo = "Curta"
         else:
             self.modo = "Foco"
 
+        # Atualiza a interface
         self.query_one(".pomodoro_sessoes", Label).update(f"Sessões: {self.sessoes_concluidas}")
         self.formatar_inputs()
         self.atualizar_tempos()
         self.tempo_restante = self.tempos[self.modo]
         self.query_one(".pomodoro_modo", Label).update(self.modo.upper())
-        self.query_one(".iniciar_pausar", Button).label = "Iniciar"
-        self.query_one(".iniciar_pausar", Button).variant = "success"
+        
+        # Reseta o botão para o estado inicial
+        botao = self.query_one(".iniciar_pausar", Button)
+        botao.label = "Iniciar"
+        botao.variant = "success"
 
         if auto_start:
             self.iniciar()
 
     def atualizar_tempos(self) -> None:
-        """Lê os valores digitados e os guarda em segundos."""
+        """Lê apenas os valores de Foco e Curta e os guarda em segundos."""
         try:
-            f_val = min(int(self.query_one(".input_pomodoro_foco", Input).value or "0"), 60)
-            c_val = min(int(self.query_one(".input_pomodoro_curta", Input).value or "0"), 60)
-            l_val = min(int(self.query_one(".input_pomodoro_longa", Input).value or "0"), 60)
-            intervalo = max(1, min(int(self.query_one(".input_pomodoro_long_interval", Input).value or "4"), 12))
+            # Busca apenas os widgets que realmente existem no compose
+            f_input = self.query_one(".input_pomodoro_foco", Input)
+            c_input = self.query_one(".input_pomodoro_curta", Input)
 
+            # Converte para inteiro, limitando a 60 minutos
+            f_val = min(int(f_input.value or "0"), 60)
+            c_val = min(int(c_input.value or "0"), 60)
+
+            # Atualiza o dicionário de tempos
             self.tempos["Foco"] = f_val * 60
             self.tempos["Curta"] = c_val * 60
-            self.tempos["Longa"] = l_val * 60
-            self.long_break_interval = intervalo
 
-            if self.modo not in self.tempos:
-                self.modo = "Foco"
+            # Sincroniza o label de sessões
             self.query_one(".pomodoro_sessoes", Label).update(f"Sessões: {self.sessoes_concluidas}")
-        except Exception:
+        except Exception as e:
+            # Se houver erro (ex: campo vazio durante a digitação), não faz nada
             pass
 
     def atualizar_tempo(self) -> None:
